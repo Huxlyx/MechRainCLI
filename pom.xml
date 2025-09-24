@@ -50,7 +50,7 @@
 	<dependencies>
 		<dependency>
     		<groupId>MechRain</groupId>
-    		<artifactId>MechRainServer</artifactId>
+    		<artifactId>mech-rain-server</artifactId>
     		<version>0.0.1-SNAPSHOT</version>
 		</dependency>
 		<dependency>

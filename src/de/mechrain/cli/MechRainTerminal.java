@@ -116,43 +116,32 @@ public class MechRainTerminal {
 	}
 	
 	public void printError(final String error) {
-		final AttributedStringBuilder asb = new AttributedStringBuilder();
-		asb.style(AttributedStyle.BOLD.foreground(AttributedStyle.RED));
-		asb.append(error);
-		asb.style(AttributedStyle.DEFAULT);
-		activeReader.printAbove(asb.toAnsi(terminal));
+		printAbove(AttributedStyle.BOLD, AttributedStyle.RED, error);
 	}
 	
 	public void printWarning(final String warning) {
-		final AttributedStringBuilder asb = new AttributedStringBuilder();
-		asb.style(AttributedStyle.BOLD.foreground(AttributedStyle.YELLOW));
-		asb.append(warning);
-		asb.style(AttributedStyle.DEFAULT);
-		activeReader.printAbove(asb.toAnsi(terminal));
+		printAbove(AttributedStyle.BOLD, AttributedStyle.YELLOW, warning);
 	}
 	
 	public void printInfo(final String info) {
-		final AttributedStringBuilder asb = new AttributedStringBuilder();
-		asb.style(AttributedStyle.DEFAULT.foreground(AttributedStyle.GREEN));
-		asb.append(info);
-		asb.style(AttributedStyle.DEFAULT);
-		activeReader.printAbove(asb.toAnsi(terminal));
+		printAbove(AttributedStyle.DEFAULT, AttributedStyle.GREEN, info);
 	}
 	
 	public void printDebug(final String debug) {
-		final AttributedStringBuilder asb = new AttributedStringBuilder();
-		asb.style(AttributedStyle.DEFAULT.foreground(AttributedStyle.CYAN));
-		asb.append(debug);
-		asb.style(AttributedStyle.DEFAULT);
-		activeReader.printAbove(asb.toAnsi(terminal));
+		printAbove(AttributedStyle.DEFAULT, AttributedStyle.CYAN, debug);
 	}
 	
 	public void printTrace(final String trace) {
+		printAbove(AttributedStyle.DEFAULT, AttributedStyle.BLUE, trace);
+	}
+	
+	private void printAbove(final AttributedStyle style, final int color, final String text) {
 		final AttributedStringBuilder asb = new AttributedStringBuilder();
-		asb.style(AttributedStyle.DEFAULT.foreground(AttributedStyle.BLUE));
-		asb.append(trace);
+		asb.style(style.foreground(color));
+		asb.append(text);
 		asb.style(AttributedStyle.DEFAULT);
 		activeReader.printAbove(asb.toAnsi(terminal));
+		
 	}
 	
 	public void write(final String msg) {
