@@ -4,19 +4,27 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.OutputStream;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Deque;
 import java.util.Iterator;
+import java.util.List;
 import java.util.concurrent.ConcurrentLinkedDeque;
 
 import org.apache.logging.log4j.core.LogEvent;
+
+import de.mechrain.cli.beans.DeviceListRequest;
+import de.mechrain.cli.beans.DeviceListResponse;
+import de.mechrain.device.Device;
 
 public class ConsoleOutputRunner implements Runnable {
 	
 	private static final int MAX_MESSAGES = 10_000;
 	
 	private final InputStream is;
+	private final ObjectOutputStream os;
 	private final MechRainTerminal terminal;
 	private final LogConfig logConfig;
 	
@@ -24,8 +32,9 @@ public class ConsoleOutputRunner implements Runnable {
 	
 	private boolean updateConsole = true;
 	
-	public ConsoleOutputRunner(final InputStream is, final MechRainTerminal terminal, final LogConfig logConfig) {
+	public ConsoleOutputRunner(final InputStream is, final OutputStream os, final MechRainTerminal terminal, final LogConfig logConfig) throws IOException {
 		this.is = is;
+		this.os = new ObjectOutputStream(os);
 		this.terminal = terminal;
 		this.logConfig = logConfig;
 	}
@@ -36,7 +45,15 @@ public class ConsoleOutputRunner implements Runnable {
 	
 	public void showBuffer() {
 		final int logMsgCount = logMessages.size();
-		terminal.printInfo(logMsgCount + "/" + MAX_MESSAGES + " " + (((float)logMsgCount / MAX_MESSAGES) * 100) + "%");
+		terminal.printInfo(logMsgCount + "/" + MAX_MESSAGES + ' ' + (((float)logMsgCount / MAX_MESSAGES) * 100) + "%");
+	}
+	
+	public void showDevices() {
+		try {
+			os.writeObject(new DeviceListRequest());
+		} catch (final IOException e) {
+			terminal.printError("Could not send device list request. " + e.getMessage());
+		}
 	}
 	
 	public void clearBuffer() {
@@ -93,7 +110,6 @@ public class ConsoleOutputRunner implements Runnable {
 		} catch (final IOException e) {
 			terminal.printError("Could not dump log " + e.getMessage());
 		}
-		
 	}
 
 	@Override
@@ -112,8 +128,17 @@ public class ConsoleOutputRunner implements Runnable {
 						if (updateConsole && shouldOutput(msg)) {
 							msg.toConsoleOutput(terminal, logConfig);
 						}
+					} else if (object instanceof DeviceListResponse devListResponse) {
+						final List<Device> devices = devListResponse.getDeviceList();
+						for (final Device device : devices) {
+							if (device.isConnected()) {
+								terminal.printInfo(device.toString());
+							} else {
+								terminal.printWarning(device.toString());
+							}
+						}
 					} else {
-						terminal.printError("Not a log event! " + object.getClass().getName());
+						terminal.printError("Unhandled object " + object.getClass().getName());
 					}
 				} catch (final IOException | ClassNotFoundException e) {
 					terminal.printError("Connection lost " + e.getMessage());
@@ -126,5 +151,4 @@ public class ConsoleOutputRunner implements Runnable {
 		}
 		terminal.printWarning("Output runner stopped");
 	}
-
 }

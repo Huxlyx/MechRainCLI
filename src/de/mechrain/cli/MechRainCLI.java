@@ -9,6 +9,7 @@ import static de.mechrain.cli.MechRainTerminal.SET;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
@@ -18,6 +19,9 @@ import java.nio.charset.StandardCharsets;
 import java.util.concurrent.Callable;
 
 import org.apache.logging.log4j.spi.StandardLevel;
+import org.jline.utils.AttributedStringBuilder;
+import org.jline.utils.AttributedStyle;
+
 import de.mechrain.cli.LogConfig.FilterBy;
 
 public class MechRainCLI implements Callable<Integer> {
@@ -53,7 +57,8 @@ public class MechRainCLI implements Callable<Integer> {
 			}
 			
 			final InputStream inputStream = socket.getInputStream();
-			final ConsoleOutputRunner outputRunner = new ConsoleOutputRunner(inputStream, terminal, config);
+			final OutputStream outputStream = socket.getOutputStream();
+			final ConsoleOutputRunner outputRunner = new ConsoleOutputRunner(inputStream, outputStream, terminal, config);
 			final Thread cliThread = new Thread(outputRunner);
 			cliThread.start();
 			
@@ -119,6 +124,12 @@ public class MechRainCLI implements Callable<Integer> {
 					switch (splits[1].toLowerCase()) {
 					case "buffer":
 						outputRunner.showBuffer();
+						break;
+					case "devices":
+						outputRunner.showDevices();
+						break;
+					case "diagram":
+						showDiagram();
 						break;
 					default:
 						terminal.printError("Unkown show option " + splits[1]);
@@ -218,6 +229,34 @@ public class MechRainCLI implements Callable<Integer> {
 		}
 		while (reconnect);
 		return 1;
+	}
+	
+	private void showDiagram() {
+		final AttributedStringBuilder asb = new AttributedStringBuilder();
+		asb.style(AttributedStyle.BOLD.foreground(AttributedStyle.CYAN));
+		asb.append("          *+----------------------+           \n");
+		asb.append("           |[3V3]            [GND]|           \n");
+		asb.append("           |[EN ]            [G23]|           \n");
+		asb.append("     [IN0 ]|[G36]  +------+  [G22]|[SHT-SCL]  \n");
+		asb.append("     [IN1 ]|[G39]  |ESP-32|  [G1 ]|           \n");
+		asb.append("     [IN2 ]|[G34]  +------+  [G31]|           \n");
+		asb.append("     [IN3 ]|[G35]            [G21]|[SHT-SDA]  \n");
+		asb.append("     [IN4 ]|[G32]            [G19]|           \n");
+		asb.append("     [IN5 ]|[G33]            [G18]|           \n");
+		asb.append("     [IN6 ]|[G25]            [G57]|           \n");
+		asb.append("     [IN7 ]|[G26]            [G17]|[PWM (CO2)]\n");
+		asb.append("     [OUT0]|[G27]            [G16]|           \n");
+		asb.append("     [OUT1]|[G14]            [G4 ]|           \n");
+		asb.append("     [OUT2]|[G12]            [G0 ]|           \n");
+		asb.append("     [OUT3]|[G13]            [G25]|           \n");
+		asb.append("           |[G9 ]            [G15]|           \n");
+		asb.append("           |[G10]            [G8 ]|           \n");
+		asb.append("           |[G11]            [G7 ]|           \n");
+		asb.append("           |[GND]            [G6 ]|           \n");
+		asb.append("           |[5V ]            [3V3]|           \n");
+		asb.append("           +----------------------+           \n");
+		asb.style(AttributedStyle.DEFAULT);
+		terminal.printAbove(asb);
 	}
 
 	private Socket connect(final int udpPort) throws IOException {

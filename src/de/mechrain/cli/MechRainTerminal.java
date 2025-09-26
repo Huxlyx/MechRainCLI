@@ -34,7 +34,9 @@ public class MechRainTerminal {
 					node("off")),
 			node(RECONNECT),
 			node(SHOW,
-					node("buffer")),
+					node("buffer"),
+					node("devices"),
+					node("diagram")),
 			node(SET,
 					node("level", 
 							node("off", "err", "warn", "info", "debug", "trace")),
@@ -141,7 +143,10 @@ public class MechRainTerminal {
 		asb.append(text);
 		asb.style(AttributedStyle.DEFAULT);
 		activeReader.printAbove(asb.toAnsi(terminal));
-		
+	}
+	
+	public void printAbove(final AttributedStringBuilder asb) {
+		activeReader.printAbove(asb.toAnsi(terminal));
 	}
 	
 	public void write(final String msg) {
