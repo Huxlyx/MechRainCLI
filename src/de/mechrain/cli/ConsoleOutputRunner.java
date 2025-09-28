@@ -8,6 +8,8 @@ import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Deque;
 import java.util.Iterator;
 import java.util.List;
@@ -15,8 +17,14 @@ import java.util.concurrent.ConcurrentLinkedDeque;
 
 import org.apache.logging.log4j.core.LogEvent;
 
-import de.mechrain.cli.beans.DeviceListRequest;
-import de.mechrain.cli.beans.DeviceListResponse;
+import de.mechrain.cmdline.beans.AddSinkRequest;
+import de.mechrain.cmdline.beans.AddTaskRequest;
+import de.mechrain.cmdline.beans.ConfigDeviceRequest;
+import de.mechrain.cmdline.beans.ConsoleRequest;
+import de.mechrain.cmdline.beans.ConsoleResponse;
+import de.mechrain.cmdline.beans.DeviceListRequest;
+import de.mechrain.cmdline.beans.DeviceListResponse;
+import de.mechrain.cmdline.beans.SwitchToNonInteractiveRequest;
 import de.mechrain.device.Device;
 
 public class ConsoleOutputRunner implements Runnable {
@@ -50,9 +58,47 @@ public class ConsoleOutputRunner implements Runnable {
 	
 	public void showDevices() {
 		try {
-			os.writeObject(new DeviceListRequest());
+			os.writeObject(DeviceListRequest.INSTANCE);
+			os.reset();
 		} catch (final IOException e) {
 			terminal.printError("Could not send device list request. " + e.getMessage());
+		}
+	}
+
+	public void configDevice(final String id) {
+		try {
+			final int deviceId = Integer.parseInt(id);
+			final ConfigDeviceRequest request = new ConfigDeviceRequest();
+			request.setDeviceId(deviceId);
+			os.writeObject(request);
+			os.reset();
+			terminal.switchReader();
+		} catch (final NumberFormatException e) {
+			terminal.printError("Invalid device id " + id + " expected a number. " + e.getMessage());
+		} catch (final IOException e) {
+			terminal.printError("Could not send config device request. " + e.getMessage());
+		}
+	}
+	
+	public void addSink() {
+		try {
+			final AddSinkRequest request = new AddSinkRequest();
+			os.writeObject(request);
+			os.reset();
+			terminal.setInteractive(true);
+		} catch (final IOException e) {
+			terminal.printError("Could not send add sink request. " + e.getMessage());
+		}
+	}
+	
+	public void addTask() {
+		try {
+			final AddTaskRequest request = new AddTaskRequest();
+			os.writeObject(request);
+			os.reset();
+			terminal.setInteractive(true);
+		} catch (final IOException e) {
+			terminal.printError("Could not send add task request. " + e.getMessage());
 		}
 	}
 	
@@ -129,7 +175,8 @@ public class ConsoleOutputRunner implements Runnable {
 							msg.toConsoleOutput(terminal, logConfig);
 						}
 					} else if (object instanceof DeviceListResponse devListResponse) {
-						final List<Device> devices = devListResponse.getDeviceList();
+						final List<Device> devices = new ArrayList<>(devListResponse.getDeviceList());
+						devices.sort(new DeviceComparator());
 						for (final Device device : devices) {
 							if (device.isConnected()) {
 								terminal.printInfo(device.toString());
@@ -137,6 +184,15 @@ public class ConsoleOutputRunner implements Runnable {
 								terminal.printWarning(device.toString());
 							}
 						}
+					} else if (object instanceof ConsoleRequest consoleRequest) {
+						final String response = terminal.readLine(consoleRequest.getRequest() + '>');
+						final ConsoleResponse consoleResponse = new ConsoleResponse();
+						consoleResponse.setResponse(response);
+						os.writeObject(consoleResponse);
+						os.reset();
+					} else if (object instanceof SwitchToNonInteractiveRequest) {
+						terminal.setInteractive(false);
+						terminal.switchReader();
 					} else {
 						terminal.printError("Unhandled object " + object.getClass().getName());
 					}
@@ -150,5 +206,13 @@ public class ConsoleOutputRunner implements Runnable {
 			e1.printStackTrace();
 		}
 		terminal.printWarning("Output runner stopped");
+		terminal.setInteractive(false);
+	}
+	
+	static class DeviceComparator implements Comparator<Device> {
+		@Override
+		public int compare(final Device device1, final Device device2) {
+			return Integer.compare(device1.getId(), device2.getId());
+		}
 	}
 }

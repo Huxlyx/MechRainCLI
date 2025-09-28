@@ -93,6 +93,7 @@ public class LogConfig {
 
 	public void setFilterLevel(final StandardLevel filterLevel) {
 		properties.put(FILTER_LEVEL, filterLevel.name());
+  		persist();
 		this.filterLevel = filterLevel;
 	}
 
@@ -102,6 +103,7 @@ public class LogConfig {
 
 	public void setShowLoggerName(final boolean showLoggerName) {
 		properties.put(SHOW_LOGGER_NAME, String.valueOf(showLoggerName));
+  		persist();
 		this.showLoggerName = showLoggerName;
 	}
 
@@ -111,6 +113,7 @@ public class LogConfig {
 
 	public void setShowTime(final boolean showTime) {
 		properties.put(SHOW_TIME, String.valueOf(showTime));
+  		persist();
 		this.showTime = showTime;
 	}
 
@@ -120,6 +123,7 @@ public class LogConfig {
 
 	public void setFilterBy(final FilterBy filterBy) {
 		properties.put(FILTER_BY, filterBy.name());
+  		persist();
 		this.filterBy = filterBy;
 	}
 	
@@ -129,6 +133,7 @@ public class LogConfig {
 
 	public void setFilterString(final String filterString) {
 		properties.put(FILTER_STRING, filterString);
+  		persist();
 		this.filterString = filterString;
 	}
 

@@ -3,6 +3,10 @@ package de.mechrain.cli;
 import static org.jline.builtins.Completers.TreeCompleter.node;
 
 import java.io.IOException;
+import java.nio.file.Paths;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
 
 import org.fusesource.jansi.AnsiConsole;
 import org.jline.builtins.Completers.TreeCompleter;
@@ -17,16 +21,28 @@ import org.jline.utils.InfoCmp.Capability;
 
 public class MechRainTerminal {
 	
+	enum Mode {
+		GENERAL,
+		DEVICE;
+	}
+	
 	public static final String CLEAR = "clear";
+	public static final String CONFIG = "config";
 	public static final String DUMP = "dump";
 	public static final String FILTER = "filter";
 	public static final String RECONNECT = "reconnect";
 	public static final String SHOW = "show";
 	public static final String SET = "set";
+	
+	private boolean interactive = false;
+	private Lock lock = new ReentrantLock();
+	private Condition interactiveMode = lock.newCondition();
 
 	private final Completer generalCompleter = new TreeCompleter(
 			node(CLEAR,
 					node("buffer")),
+			node(CONFIG,
+					node("device")),
 			node(DUMP),
 			node(FILTER,
 					node("logName"),
@@ -47,11 +63,14 @@ public class MechRainTerminal {
 			node("switch")
 		);
 
-	private final Completer testCompleter = new TreeCompleter(
-			node("foo",
-					node("foo1")),
-			node("bar"),
-			node("baz",
+	private final Completer deviceCompleter = new TreeCompleter(
+			node("add",
+					node("sink"),
+					node("task")),
+			node("remove",
+					node("sink"),
+					node("task")),
+			node("save",
 					node("baz1"),
 					node("baz2"),
 					node("baz3"))
@@ -59,9 +78,10 @@ public class MechRainTerminal {
 	
 	private final Terminal terminal;
 	private final LineReader generalReader;
-	private final LineReader testReader;
+	private final LineReader deviceReader;
 	
 	private LineReader activeReader;
+	private Mode mode = Mode.GENERAL;
 	
 	public MechRainTerminal() throws IOException {
 		AnsiConsole.systemInstall();
@@ -72,10 +92,14 @@ public class MechRainTerminal {
 				.terminal(terminal)
 				.completer(generalCompleter)
 				.build();
-		this.testReader = LineReaderBuilder.builder()
+		this.generalReader.setVariable(LineReader.HISTORY_FILE, Paths.get("general.hist"));
+		this.generalReader.setVariable(LineReader.HISTORY_FILE_SIZE, 1000);
+		this.deviceReader = LineReaderBuilder.builder()
 				.terminal(terminal)
-				.completer(testCompleter)
+				.completer(deviceCompleter)
 				.build();
+		this.deviceReader.setVariable(LineReader.HISTORY_FILE, Paths.get("device.hist"));
+		this.deviceReader.setVariable(LineReader.HISTORY_FILE_SIZE, 1000);
 		
 		this.activeReader = generalReader;
 	}
@@ -107,9 +131,37 @@ public class MechRainTerminal {
 	
 	public void switchReader() {
 		if (activeReader == generalReader) {
-			activeReader = testReader;
+			activeReader = deviceReader;
+			mode = Mode.DEVICE;
 		} else {
 			activeReader = generalReader;
+			mode = Mode.GENERAL;
+		}
+	}
+	
+	public void setInteractive(final boolean interactive) {
+		this.interactive = interactive;
+		if ( ! interactive) {
+			printInfo("Switched to non-interactive");
+			try {
+				lock.lock();
+				interactiveMode.signal();
+			} catch (final Exception e) {
+				e.printStackTrace();
+			} finally {
+				lock.unlock();
+			}
+		}
+	}
+	
+	public void maybeWaitForNonInteractive() throws InterruptedException {
+		try {
+			lock.lock();
+			while (interactive) {
+				interactiveMode.await();
+			}
+		} finally {
+			lock.unlock();
 		}
 	}
 	
@@ -153,4 +205,7 @@ public class MechRainTerminal {
 		terminal.writer().write(msg);
 	}
 
+	public Mode getMode() {
+		return mode;
+	}
 }
