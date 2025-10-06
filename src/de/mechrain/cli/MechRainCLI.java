@@ -70,205 +70,13 @@ public class MechRainCLI implements Callable<Integer> {
 
 				final String[] splits = line.split(" ");
 
-				boolean redraw = false;
 				switch (terminal.getMode()) {
 				case GENERAL:
-					switch (splits[0].toLowerCase()) {
-					case CLEAR:
-						if (splits.length == 2 && splits[1].equalsIgnoreCase("buffer")) {
-							outputRunner.clearBuffer();
-						} else {
-							terminal.clear();
-						}
-						break;
-					case CONFIG:
-						if (splits.length != 3) {
-							terminal.printError("expected 'device' and number");
-							continue;
-						}
-						outputRunner.configDevice(splits[2]);
-						break;
-					case DUMP:
-						if (splits.length != 2) {
-							terminal.printError("expected 2 arguments but got " + splits.length);
-							continue;
-						}
-						outputRunner.dumpToFile(splits[1]);
-						break;
-					case FILTER:
-						if (splits.length < 2) {
-							terminal.printError("expected at least 2 arguments but got " + splits.length);
-							continue;
-						}
-						switch (splits[1].toLowerCase()) {
-						case "logname":
-							if (splits.length < 3) {
-								terminal.printError("expected at least 3 arguments but got " + splits.length);
-								continue;
-							}
-							config.setFilterBy(FilterBy.LOG_NAME);
-							config.setFilterString(splits[2]);
-							redraw = true;
-							break;
-						case "text":
-							if (splits.length < 3) {
-								terminal.printError("expected at least 3 arguments but got " + splits.length);
-								continue;
-							}
-							config.setFilterBy(FilterBy.TEXT);
-							config.setFilterString(splits[2]);
-							redraw = true;
-							break;
-						case "off":
-							config.setFilterBy(FilterBy.DONT);
-							redraw = true;
-							break;
-						default:
-							terminal.printError("Unkown filter option " + splits[1]);
-							break;
-						}
-						break;
-					case SHOW:
-						if (splits.length != 2) {
-							terminal.printError("expected 2 arguments but got " + splits.length);
-							continue;
-						}
-						switch (splits[1].toLowerCase()) {
-						case "buffer":
-							outputRunner.showBuffer();
-							break;
-						case "devices":
-							outputRunner.showDevices();
-							break;
-						case "diagram":
-							showDiagram();
-							break;
-						default:
-							terminal.printError("Unkown show option " + splits[1]);
-							break;
-						}
-						break;
-					case SET:
-						if (splits.length != 3) {
-							terminal.printError("expected 3 arguments but got " + splits.length);
-							continue;
-						}
-						switch (splits[1].toLowerCase()) {
-						case "level":
-							switch (splits[2].toLowerCase()) {
-							case "off":
-								config.setFilterLevel(StandardLevel.OFF);
-								redraw = true;
-								break;
-							case "err":
-								config.setFilterLevel(StandardLevel.ERROR);
-								redraw = true;
-								break;
-							case "warn":
-								config.setFilterLevel(StandardLevel.WARN);
-								redraw = true;
-								break;
-							case "info":
-								config.setFilterLevel(StandardLevel.INFO);
-								redraw = true;
-								break;
-							case "debug":
-								config.setFilterLevel(StandardLevel.DEBUG);
-								redraw = true;
-								break;
-							case "trace":
-								config.setFilterLevel(StandardLevel.TRACE);
-								redraw = true;
-								break;
-							default:
-								terminal.printError("Unkown level '" + splits[2] + "'");
-								redraw = false;
-								break;
-							}
-							break;
-						case "time":
-							switch (splits[2].toLowerCase()) {
-							case "on":
-								config.setShowTime(true);
-								break;
-							case "off":
-								config.setShowTime(false);
-								break;
-							default:
-								terminal.printError("Expected 'on' or 'off' but got " + splits[2]);
-								continue;
-							} 
-							redraw = true;
-							break;
-						case "logname":
-							switch (splits[2].toLowerCase()) {
-							case "on":
-								config.setShowLoggerName(true);
-								break;
-							case "off":
-								config.setShowLoggerName(false);
-								break;
-							default:
-								terminal.printError("Expected 'on' or 'off' but got " + splits[2]);
-								continue;
-							} 
-							redraw = true;
-							break;
-						}
-						break;
-					case RECONNECT:
-						socket.close();
-						running = false;
-						reconnect = true;
-						start = System.currentTimeMillis();
-						break;
-					case "switch":
-						terminal.switchReader();
-						break;
-					default:
-						terminal.printError("Unkown option " + splits[0]);
-						break;
-					}
-					if (redraw) {
-						try {
-							outputRunner.setUpdateConsole(false);
-							outputRunner.redraw();
-						} finally {
-							outputRunner.setUpdateConsole(true);
-						}
-					}
+					running = handleGeneral(splits, outputRunner, config, socket);
 					break;
 				case DEVICE:
-					switch (splits[0].toLowerCase()) {
-					case "add":
-						if (splits.length != 2) {
-							terminal.printError("expected 2 arguments but got " + splits.length);
-							continue;
-						}
-						switch (splits[1].toLowerCase()) {
-						case "sink":
-							outputRunner.addSink();
-							break;
-						case "task":
-							outputRunner.addTask();
-							break;
-						default:
-							terminal.printError("Expected 'on' or 'off' but got " + splits[2]);
-							continue;
-						} 
-						break;
-					case "remove":
-						break;	
-					case "save":
-						break;
-					default:
-						terminal.printError("Unkown option " + splits[0]);
-						break;
-					}
+					handleDevice(splits, outputRunner);
 					break;
-				default:
-					break;
-
 				}
 			}
 		}
@@ -276,12 +84,205 @@ public class MechRainCLI implements Callable<Integer> {
 		return 1;
 	}
 
-	private void handleGeneral() {
+	private boolean handleGeneral(final String[] splits, final ConsoleOutputRunner outputRunner, final LogConfig config, final Socket socket) throws IOException {
+		boolean redraw = false;
+		boolean running = true;
+		switch (splits[0].toLowerCase()) {
+		case CLEAR:
+			if (splits.length == 2 && splits[1].equalsIgnoreCase("buffer")) {
+				outputRunner.clearBuffer();
+			} else {
+				terminal.clear();
+			}
+			break;
+		case CONFIG:
+			if (splits.length != 3) {
+				terminal.printError("expected 'device' and number");
+				return true;
+			}
+			outputRunner.configDevice(splits[2]);
+			break;
+		case DUMP:
+			if (splits.length != 2) {
+				terminal.printError("expected 2 arguments but got " + splits.length);
+				return true;
+			}
+			outputRunner.dumpToFile(splits[1]);
+			break;
+		case FILTER:
+			if (splits.length < 2) {
+				terminal.printError("expected at least 2 arguments but got " + splits.length);
+				return true;
+			}
+			switch (splits[1].toLowerCase()) {
+			case "logname":
+				if (splits.length < 3) {
+					terminal.printError("expected at least 3 arguments but got " + splits.length);
+					return true;
+				}
+				config.setFilterBy(FilterBy.LOG_NAME);
+				config.setFilterString(splits[2]);
+				redraw = true;
+				break;
+			case "text":
+				if (splits.length < 3) {
+					terminal.printError("expected at least 3 arguments but got " + splits.length);
+					return true;
+				}
+				config.setFilterBy(FilterBy.TEXT);
+				config.setFilterString(splits[2]);
+				redraw = true;
+				break;
+			case "off":
+				config.setFilterBy(FilterBy.DONT);
+				redraw = true;
+				break;
+			default:
+				terminal.printError("Unkown filter option " + splits[1]);
+				break;
+			}
+			break;
+		case SHOW:
+			if (splits.length != 2) {
+				terminal.printError("expected 2 arguments but got " + splits.length);
+				return true;
+			}
+			switch (splits[1].toLowerCase()) {
+			case "buffer":
+				outputRunner.showBuffer();
+				break;
+			case "devices":
+				outputRunner.showDevices();
+				break;
+			case "diagram":
+				showDiagram();
+				break;
+			default:
+				terminal.printError("Unkown show option " + splits[1]);
+				break;
+			}
+			break;
+		case SET:
+			if (splits.length != 3) {
+				terminal.printError("expected 3 arguments but got " + splits.length);
+				return true;
+			}
+			switch (splits[1].toLowerCase()) {
+			case "level":
+				switch (splits[2].toLowerCase()) {
+				case "off":
+					config.setFilterLevel(StandardLevel.OFF);
+					redraw = true;
+					break;
+				case "err":
+					config.setFilterLevel(StandardLevel.ERROR);
+					redraw = true;
+					break;
+				case "warn":
+					config.setFilterLevel(StandardLevel.WARN);
+					redraw = true;
+					break;
+				case "info":
+					config.setFilterLevel(StandardLevel.INFO);
+					redraw = true;
+					break;
+				case "debug":
+					config.setFilterLevel(StandardLevel.DEBUG);
+					redraw = true;
+					break;
+				case "trace":
+					config.setFilterLevel(StandardLevel.TRACE);
+					redraw = true;
+					break;
+				default:
+					terminal.printError("Unkown level '" + splits[2] + "'");
+					redraw = false;
+					break;
+				}
+				break;
+			case "time":
+				switch (splits[2].toLowerCase()) {
+				case "on":
+					config.setShowTime(true);
+					break;
+				case "off":
+					config.setShowTime(false);
+					break;
+				default:
+					terminal.printError("Expected 'on' or 'off' but got " + splits[2]);
+					return true;
+				}
+				redraw = true;
+				break;
+			case "logname":
+				switch (splits[2].toLowerCase()) {
+				case "on":
+					config.setShowLoggerName(true);
+					break;
+				case "off":
+					config.setShowLoggerName(false);
+					break;
+				default:
+					terminal.printError("Expected 'on' or 'off' but got " + splits[2]);
+					return true;
+				}
+				redraw = true;
+				break;
+			}
+			break;
+		case RECONNECT:
+			socket.close();
+			running = false;
+			reconnect = true;
+			start = System.currentTimeMillis();
+			break;
+		case "switch":
+			terminal.switchReader();
+			break;
+		default:
+			terminal.printError("Unkown option " + splits[0]);
+			break;
+		}
 
+		if (redraw) {
+			try {
+				outputRunner.setUpdateConsole(false);
+				outputRunner.redraw();
+			} finally {
+				outputRunner.setUpdateConsole(true);
+			}
+		}
+		
+		return running;
 	}
 
-	private void handleDevice() {
-
+	private void handleDevice(final String[] splits, final ConsoleOutputRunner outputRunner) {
+		switch (splits[0].toLowerCase()) {
+		case "add":
+			if (splits.length != 2) {
+				terminal.printError("expected 2 arguments but got " + splits.length);
+				return;
+			}
+			switch (splits[1].toLowerCase()) {
+			case "sink":
+				outputRunner.addSink();
+				break;
+			case "task":
+				outputRunner.addTask();
+				break;
+			default:
+				terminal.printError("Expected 'on' or 'off' but got " + splits[2]);
+				return;
+			} 
+			break;
+		case "remove":
+			break;	
+		case "save":
+			break;
+		default:
+			terminal.printError("Unkown option " + splits[0]);
+			break;
+		}
 	}
 
 	private void showDiagram() {
@@ -322,7 +323,7 @@ public class MechRainCLI implements Callable<Integer> {
 			while (true) {
 				try {
 					final byte[] payload = "CLI-HELLO".getBytes(StandardCharsets.UTF_8);
-					final DatagramPacket broadcast = new DatagramPacket(payload, payload.length, InetAddress.getByName("192.168.0.255"), udpPort);
+					final DatagramPacket broadcast = new DatagramPacket(payload, payload.length, InetAddress.getByName("255.255.255.255"), udpPort);
 					socket.send(broadcast);
 
 					final byte[] buf = new byte[256];

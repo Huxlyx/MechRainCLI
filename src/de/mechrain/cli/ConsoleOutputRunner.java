@@ -15,7 +15,10 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedDeque;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.core.LogEvent;
+import org.jline.utils.AttributedStringBuilder;
+import org.jline.utils.AttributedStyle;
 
 import de.mechrain.cmdline.beans.AddSinkRequest;
 import de.mechrain.cmdline.beans.AddTaskRequest;
@@ -177,13 +180,25 @@ public class ConsoleOutputRunner implements Runnable {
 					} else if (object instanceof DeviceListResponse devListResponse) {
 						final List<Device> devices = new ArrayList<>(devListResponse.getDeviceList());
 						devices.sort(new DeviceComparator());
+						final AttributedStringBuilder deviceTable = new AttributedStringBuilder();
+						deviceTable.style(AttributedStyle.DEFAULT.foreground(AttributedStyle.WHITE));
+						deviceTable.append(StringUtils.center("Device", 10)).append('|').append(StringUtils.center("Description", 40)).append('|').append(StringUtils.center("Status", 15)).append('\n');
+						deviceTable.append(StringUtils.repeat('-', 66)).append('\n');
 						for (final Device device : devices) {
+							final String description = device.getDescription();
 							if (device.isConnected()) {
-								terminal.printInfo(device.toString());
+								deviceTable.style(AttributedStyle.DEFAULT.foreground(AttributedStyle.GREEN));
+								deviceTable.append(StringUtils.rightPad("Device " + device.getId(), 10)).append('|');
+								deviceTable.append(StringUtils.rightPad(description != null ? description : " ", 40)).append('|');
+								deviceTable.append(StringUtils.center("connected", 15)).append('\n');
 							} else {
-								terminal.printWarning(device.toString());
+								deviceTable.style(AttributedStyle.DEFAULT.foreground(AttributedStyle.YELLOW));
+								deviceTable.append(StringUtils.rightPad("Device " + device.getId(), 10)).append('|');
+								deviceTable.append(StringUtils.rightPad(description != null ? description : " ", 40)).append('|');
+								deviceTable.append(StringUtils.center("disconnected", 15)).append('\n');;
 							}
 						}
+						terminal.printAbove(deviceTable);
 					} else if (object instanceof ConsoleRequest consoleRequest) {
 						final String response = terminal.readLine(consoleRequest.getRequest() + '>');
 						final ConsoleResponse consoleResponse = new ConsoleResponse();
