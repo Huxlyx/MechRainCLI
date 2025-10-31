@@ -1,10 +1,10 @@
 package de.mechrain.cli;
 
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -16,7 +16,10 @@ import java.util.List;
 import java.util.concurrent.ConcurrentLinkedDeque;
 
 import org.apache.commons.lang3.StringUtils;
-import org.apache.logging.log4j.core.LogEvent;
+import org.apache.fory.Fory;
+import org.apache.fory.ThreadSafeFory;
+import org.apache.fory.config.Language;
+import org.apache.fory.exception.DeserializationException;
 import org.jline.utils.AttributedStringBuilder;
 import org.jline.utils.AttributedStyle;
 
@@ -27,17 +30,23 @@ import de.mechrain.cmdline.beans.ConsoleRequest;
 import de.mechrain.cmdline.beans.ConsoleResponse;
 import de.mechrain.cmdline.beans.DeviceListRequest;
 import de.mechrain.cmdline.beans.DeviceListResponse;
+import de.mechrain.cmdline.beans.DeviceListResponse.DeviceData;
+import de.mechrain.cmdline.beans.DeviceResetRequest;
+import de.mechrain.cmdline.beans.SetDescriptionRequest;
+import de.mechrain.cmdline.beans.SetIdRequest;
 import de.mechrain.cmdline.beans.SwitchToNonInteractiveRequest;
-import de.mechrain.device.Device;
+import de.mechrain.log.LogEvent;
 
 public class ConsoleOutputRunner implements Runnable {
 	
 	private static final int MAX_MESSAGES = 10_000;
 	
 	private final InputStream is;
-	private final ObjectOutputStream os;
+	private final DataOutputStream dos;
 	private final MechRainTerminal terminal;
 	private final LogConfig logConfig;
+
+	private final ThreadSafeFory fory;
 	
 	private final Deque<LogMessage> logMessages = new ConcurrentLinkedDeque<>();
 	
@@ -45,9 +54,20 @@ public class ConsoleOutputRunner implements Runnable {
 	
 	public ConsoleOutputRunner(final InputStream is, final OutputStream os, final MechRainTerminal terminal, final LogConfig logConfig) throws IOException {
 		this.is = is;
-		this.os = new ObjectOutputStream(os);
+		this.dos = new DataOutputStream(os);
 		this.terminal = terminal;
 		this.logConfig = logConfig;
+		this.fory = Fory.builder()
+				.withLanguage(Language.JAVA)
+				.requireClassRegistration(false)
+				.buildThreadSafeFory();
+		fory.register(AddSinkRequest.class);
+		fory.register(AddTaskRequest.class);
+		fory.register(SetIdRequest.class);
+		fory.register(SetDescriptionRequest.class);
+		fory.register(DeviceResetRequest.class);
+		fory.register(ConsoleRequest.class);
+		fory.register(ConsoleResponse.class);
 	}
 
 	public void setUpdateConsole(boolean updateConsole) {
@@ -61,8 +81,9 @@ public class ConsoleOutputRunner implements Runnable {
 	
 	public void showDevices() {
 		try {
-			os.writeObject(DeviceListRequest.INSTANCE);
-			os.reset();
+			final byte[] data = fory.serialize(DeviceListRequest.INSTANCE);
+			dos.writeInt(data.length);
+			dos.write(data);
 		} catch (final IOException e) {
 			terminal.printError("Could not send device list request. " + e.getMessage());
 		}
@@ -73,8 +94,9 @@ public class ConsoleOutputRunner implements Runnable {
 			final int deviceId = Integer.parseInt(id);
 			final ConfigDeviceRequest request = new ConfigDeviceRequest();
 			request.setDeviceId(deviceId);
-			os.writeObject(request);
-			os.reset();
+			final byte[] data = fory.serialize(request);
+			dos.writeInt(data.length);
+			dos.write(data);
 			terminal.switchReader();
 		} catch (final NumberFormatException e) {
 			terminal.printError("Invalid device id " + id + " expected a number. " + e.getMessage());
@@ -86,8 +108,9 @@ public class ConsoleOutputRunner implements Runnable {
 	public void addSink() {
 		try {
 			final AddSinkRequest request = new AddSinkRequest();
-			os.writeObject(request);
-			os.reset();
+			final byte[] data = fory.serialize(request);
+			dos.writeInt(data.length);
+			dos.write(data);
 			terminal.setInteractive(true);
 		} catch (final IOException e) {
 			terminal.printError("Could not send add sink request. " + e.getMessage());
@@ -97,11 +120,45 @@ public class ConsoleOutputRunner implements Runnable {
 	public void addTask() {
 		try {
 			final AddTaskRequest request = new AddTaskRequest();
-			os.writeObject(request);
-			os.reset();
+			final byte[] data = fory.serialize(request);
+			dos.writeInt(data.length);
+			dos.write(data);
 			terminal.setInteractive(true);
 		} catch (final IOException e) {
 			terminal.printError("Could not send add task request. " + e.getMessage());
+		}
+	}
+
+	public void setDeviceId(int id) {
+		try {
+			final SetIdRequest request = new SetIdRequest(id);
+			final byte[] data = fory.serialize(request);
+			dos.writeInt(data.length);
+			dos.write(data);
+		} catch (final IOException e) {
+			terminal.printError("Could not send set task request. " + e.getMessage());
+		}
+	}
+	
+	public void setDeviceDescription(final String description) {
+		try {
+			final SetDescriptionRequest request = new SetDescriptionRequest(description);
+			final byte[] data = fory.serialize(request);
+			dos.writeInt(data.length);
+			dos.write(data);
+		} catch (final IOException e) {
+			terminal.printError("Could not send set task request. " + e.getMessage());
+		}
+	}
+	
+	public void resetDevice() {
+		try {
+			final DeviceResetRequest request = new DeviceResetRequest();
+			final byte[] data = fory.serialize(request);
+			dos.writeInt(data.length);
+			dos.write(data);
+		} catch (final IOException e) {
+			terminal.printError("Could not reset device. " + e.getMessage());
 		}
 	}
 	
@@ -163,11 +220,14 @@ public class ConsoleOutputRunner implements Runnable {
 
 	@Override
 	public void run() {
-		try (final ObjectInputStream ois = new ObjectInputStream(is)) {
+		try (final DataInputStream dis = new DataInputStream(is)) {
 			boolean connected = true;
 			while (connected) {
 				try {
-					final Object object = ois.readObject();
+					final int len = dis.readInt();
+					final byte[] data = new byte[len];
+					dis.readFully(data);
+					final Object object = fory.deserialize(data);
 					if (object instanceof LogEvent event) {
 						final LogMessage msg = new LogMessage(event);
 						if (logMessages.size() > MAX_MESSAGES) {
@@ -178,13 +238,13 @@ public class ConsoleOutputRunner implements Runnable {
 							msg.toConsoleOutput(terminal, logConfig);
 						}
 					} else if (object instanceof DeviceListResponse devListResponse) {
-						final List<Device> devices = new ArrayList<>(devListResponse.getDeviceList());
-						devices.sort(new DeviceComparator());
+						final List<DeviceData> devices = new ArrayList<>(devListResponse.getDeviceList());
+						devices.sort(new DeviceDataComparator());
 						final AttributedStringBuilder deviceTable = new AttributedStringBuilder();
 						deviceTable.style(AttributedStyle.DEFAULT.foreground(AttributedStyle.WHITE));
 						deviceTable.append(StringUtils.center("Device", 10)).append('|').append(StringUtils.center("Description", 40)).append('|').append(StringUtils.center("Status", 15)).append('\n');
 						deviceTable.append(StringUtils.repeat('-', 66)).append('\n');
-						for (final Device device : devices) {
+						for (final DeviceData device : devices) {
 							final String description = device.getDescription();
 							if (device.isConnected()) {
 								deviceTable.style(AttributedStyle.DEFAULT.foreground(AttributedStyle.GREEN));
@@ -203,15 +263,16 @@ public class ConsoleOutputRunner implements Runnable {
 						final String response = terminal.readLine(consoleRequest.getRequest() + '>');
 						final ConsoleResponse consoleResponse = new ConsoleResponse();
 						consoleResponse.setResponse(response);
-						os.writeObject(consoleResponse);
-						os.reset();
+						final byte[] outData = fory.serialize(consoleResponse);
+						dos.writeInt(outData.length);
+						dos.write(outData);
 					} else if (object instanceof SwitchToNonInteractiveRequest) {
 						terminal.setInteractive(false);
 						terminal.switchReader();
 					} else {
 						terminal.printError("Unhandled object " + object.getClass().getName());
 					}
-				} catch (final IOException | ClassNotFoundException e) {
+				} catch (final DeserializationException e) {
 					terminal.printError("Connection lost " + e.getMessage());
 					connected = false;
 					break;
@@ -224,9 +285,9 @@ public class ConsoleOutputRunner implements Runnable {
 		terminal.setInteractive(false);
 	}
 	
-	static class DeviceComparator implements Comparator<Device> {
+	static class DeviceDataComparator implements Comparator<DeviceData> {
 		@Override
-		public int compare(final Device device1, final Device device2) {
+		public int compare(final DeviceData device1, final DeviceData device2) {
 			return Integer.compare(device1.getId(), device2.getId());
 		}
 	}

@@ -31,9 +31,9 @@ public class MechRainCLI implements Callable<Integer> {
 	boolean reconnect;
 
 	static long start;
-	
+
 	private final MechRainTerminal terminal;
-	
+
 	public MechRainCLI(final MechRainTerminal terminal) {
 		this.terminal = terminal;
 	}
@@ -62,7 +62,7 @@ public class MechRainCLI implements Callable<Integer> {
 			final ConsoleOutputRunner outputRunner = new ConsoleOutputRunner(inputStream, outputStream, terminal, config);
 			final Thread cliThread = new Thread(outputRunner);
 			cliThread.start();
-			
+
 			boolean running = true;
 			while (running) {
 				terminal.maybeWaitForNonInteractive();
@@ -252,7 +252,7 @@ public class MechRainCLI implements Callable<Integer> {
 				outputRunner.setUpdateConsole(true);
 			}
 		}
-		
+
 		return running;
 	}
 
@@ -276,7 +276,33 @@ public class MechRainCLI implements Callable<Integer> {
 			} 
 			break;
 		case "remove":
-			break;	
+			break;
+		case "reset":
+			outputRunner.resetDevice();
+			break;
+		case "set":
+			if (splits.length != 3) {
+				terminal.printError("expected 3 arguments but got " + splits.length);
+				return;
+			}
+			switch(splits[1].toLowerCase()) {
+			case "id":
+				try {
+					final int id = Integer.parseInt(splits[2]);
+					outputRunner.setDeviceId(id);
+				} catch (final NumberFormatException e) {
+					terminal.printError("Not a valid id:" + splits[2]);
+				}
+				break;
+			case "description":
+				final String description = splits[2];
+				outputRunner.setDeviceDescription(description);
+				break;
+			default:
+				terminal.printError("Expected 'on' or 'off' but got " + splits[2]);
+				return;
+			}
+			break;
 		case "save":
 			break;
 		default:

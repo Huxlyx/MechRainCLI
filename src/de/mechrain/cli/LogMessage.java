@@ -5,8 +5,9 @@ import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
 
-import org.apache.logging.log4j.core.LogEvent;
 import org.apache.logging.log4j.spi.StandardLevel;
+
+import de.mechrain.log.LogEvent;
 
 public class LogMessage {
 
@@ -16,9 +17,9 @@ public class LogMessage {
 	private final String loggerName;
 	
 	public LogMessage(final LogEvent logEvent) {
-		this.level = StandardLevel.getStandardLevel(logEvent.getLevel().intLevel());
+		this.level = StandardLevel.getStandardLevel(logEvent.getLevel());
 		this.timestamp = logEvent.getTimeMillis();
-		this.text = logEvent.getMessage().getFormattedMessage();
+		this.text = logEvent.getFormattedMessage();
 		this.loggerName = logEvent.getLoggerName();
 	}
 

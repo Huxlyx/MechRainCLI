@@ -73,7 +73,10 @@ public class MechRainTerminal {
 			node("save",
 					node("baz1"),
 					node("baz2"),
-					node("baz3"))
+					node("baz3")),
+			node("set",
+					node("id"),
+					node("description"))
 		);
 	
 	private final Terminal terminal;
