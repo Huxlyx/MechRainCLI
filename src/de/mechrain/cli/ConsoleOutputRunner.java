@@ -59,7 +59,7 @@ public class ConsoleOutputRunner implements Runnable {
 		this.logConfig = logConfig;
 		this.fory = Fory.builder()
 				.withLanguage(Language.JAVA)
-				.requireClassRegistration(false)
+				.requireClassRegistration(true)
 				.buildThreadSafeFory();
 		fory.register(AddSinkRequest.class);
 		fory.register(AddTaskRequest.class);
@@ -68,6 +68,13 @@ public class ConsoleOutputRunner implements Runnable {
 		fory.register(DeviceResetRequest.class);
 		fory.register(ConsoleRequest.class);
 		fory.register(ConsoleResponse.class);
+		fory.register(DeviceListRequest.class);
+		fory.register(DeviceData.class);
+		fory.register(DeviceListResponse.class);
+		fory.register(ConfigDeviceRequest.class);
+		fory.register(SwitchToNonInteractiveRequest.class);
+		fory.register(LogEvent.class);
+		
 	}
 
 	public void setUpdateConsole(boolean updateConsole) {
