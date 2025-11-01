@@ -16,13 +16,12 @@ import java.util.List;
 import java.util.concurrent.ConcurrentLinkedDeque;
 
 import org.apache.commons.lang3.StringUtils;
-import org.apache.fory.Fory;
 import org.apache.fory.ThreadSafeFory;
-import org.apache.fory.config.Language;
 import org.apache.fory.exception.DeserializationException;
 import org.jline.utils.AttributedStringBuilder;
 import org.jline.utils.AttributedStyle;
 
+import de.mechrain.cmdline.MechRainFory;
 import de.mechrain.cmdline.beans.AddSinkRequest;
 import de.mechrain.cmdline.beans.AddTaskRequest;
 import de.mechrain.cmdline.beans.ConfigDeviceRequest;
@@ -32,6 +31,8 @@ import de.mechrain.cmdline.beans.DeviceListRequest;
 import de.mechrain.cmdline.beans.DeviceListResponse;
 import de.mechrain.cmdline.beans.DeviceListResponse.DeviceData;
 import de.mechrain.cmdline.beans.DeviceResetRequest;
+import de.mechrain.cmdline.beans.RemoveSinkRequest;
+import de.mechrain.cmdline.beans.RemoveTaskRequest;
 import de.mechrain.cmdline.beans.SetDescriptionRequest;
 import de.mechrain.cmdline.beans.SetIdRequest;
 import de.mechrain.cmdline.beans.SwitchToNonInteractiveRequest;
@@ -57,24 +58,7 @@ public class ConsoleOutputRunner implements Runnable {
 		this.dos = new DataOutputStream(os);
 		this.terminal = terminal;
 		this.logConfig = logConfig;
-		this.fory = Fory.builder()
-				.withLanguage(Language.JAVA)
-				.requireClassRegistration(true)
-				.buildThreadSafeFory();
-		fory.register(AddSinkRequest.class);
-		fory.register(AddTaskRequest.class);
-		fory.register(SetIdRequest.class);
-		fory.register(SetDescriptionRequest.class);
-		fory.register(DeviceResetRequest.class);
-		fory.register(ConsoleRequest.class);
-		fory.register(ConsoleResponse.class);
-		fory.register(DeviceListRequest.class);
-		fory.register(DeviceData.class);
-		fory.register(DeviceListResponse.class);
-		fory.register(ConfigDeviceRequest.class);
-		fory.register(SwitchToNonInteractiveRequest.class);
-		fory.register(LogEvent.class);
-		
+		this.fory = MechRainFory.INSTANCE;
 	}
 
 	public void setUpdateConsole(boolean updateConsole) {
@@ -124,6 +108,17 @@ public class ConsoleOutputRunner implements Runnable {
 		}
 	}
 	
+	public void removeSink(final int id) {
+		try {
+			final RemoveSinkRequest request = new RemoveSinkRequest(id);
+			final byte[] data = fory.serialize(request);
+			dos.writeInt(data.length);
+			dos.write(data);
+		} catch (final IOException e) {
+			terminal.printError("Could not send add sink request. " + e.getMessage());
+		}
+	}
+	
 	public void addTask() {
 		try {
 			final AddTaskRequest request = new AddTaskRequest();
@@ -133,6 +128,17 @@ public class ConsoleOutputRunner implements Runnable {
 			terminal.setInteractive(true);
 		} catch (final IOException e) {
 			terminal.printError("Could not send add task request. " + e.getMessage());
+		}
+	}
+	
+	public void removeTask(final int id) {
+		try {
+			final RemoveTaskRequest request = new RemoveTaskRequest(id);
+			final byte[] data = fory.serialize(request);
+			dos.writeInt(data.length);
+			dos.write(data);
+		} catch (final IOException e) {
+			terminal.printError("Could not send add sink request. " + e.getMessage());
 		}
 	}
 

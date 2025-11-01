@@ -276,6 +276,44 @@ public class MechRainCLI implements Callable<Integer> {
 			} 
 			break;
 		case "remove":
+			if (splits.length != 2) {
+				terminal.printError("expected 2 arguments but got " + splits.length);
+				return;
+			}
+			switch (splits[1].toLowerCase()) {
+			case "sink":
+				if (splits.length != 3) {
+					terminal.printError("expected 4 arguments but got " + splits.length);
+					return;
+				}
+				try {
+					final int id = Integer.parseInt(splits[3]);
+					outputRunner.removeSink(id);
+				} catch (final NumberFormatException e) {
+					terminal.printError("Not a valid id:" + splits[3]);
+					return;
+				}
+				break;
+			case "task":
+				if (splits.length != 3) {
+					terminal.printError("expected 4 arguments but got " + splits.length);
+					return;
+				}
+				try {
+					final int id = Integer.parseInt(splits[3]);
+					outputRunner.removeTask(id);
+				} catch (final NumberFormatException e) {
+					terminal.printError("Not a valid id:" + splits[3]);
+					return;
+				}
+				break;
+			case "device":
+				outputRunner.addTask();
+				break;
+			default:
+				terminal.printError("Expected 'on' or 'off' but got " + splits[2]);
+				return;
+			} 
 			break;
 		case "reset":
 			outputRunner.resetDevice();
