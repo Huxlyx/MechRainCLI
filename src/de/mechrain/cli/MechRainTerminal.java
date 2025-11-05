@@ -67,6 +67,7 @@ public class MechRainTerminal {
 			node("add",
 					node("sink"),
 					node("task")),
+			node("exit"),
 			node("remove",
 					node("sink"),
 					node("task"),
@@ -144,8 +145,7 @@ public class MechRainTerminal {
 	}
 	
 	public void setInteractive(final boolean interactive) {
-		this.interactive = interactive;
-		if ( ! interactive) {
+		if (this.interactive && ! interactive) {
 			printInfo("Switched to non-interactive");
 			try {
 				lock.lock();
@@ -156,6 +156,7 @@ public class MechRainTerminal {
 				lock.unlock();
 			}
 		}
+		this.interactive = interactive;
 	}
 	
 	public void maybeWaitForNonInteractive() throws InterruptedException {

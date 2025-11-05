@@ -31,8 +31,10 @@ import de.mechrain.cmdline.beans.DeviceListRequest;
 import de.mechrain.cmdline.beans.DeviceListResponse;
 import de.mechrain.cmdline.beans.DeviceListResponse.DeviceData;
 import de.mechrain.cmdline.beans.DeviceResetRequest;
+import de.mechrain.cmdline.beans.RemoveDeviceRequest;
 import de.mechrain.cmdline.beans.RemoveSinkRequest;
 import de.mechrain.cmdline.beans.RemoveTaskRequest;
+import de.mechrain.cmdline.beans.SaveDeviceRequest;
 import de.mechrain.cmdline.beans.SetDescriptionRequest;
 import de.mechrain.cmdline.beans.SetIdRequest;
 import de.mechrain.cmdline.beans.SwitchToNonInteractiveRequest;
@@ -115,10 +117,9 @@ public class ConsoleOutputRunner implements Runnable {
 			dos.writeInt(data.length);
 			dos.write(data);
 		} catch (final IOException e) {
-			terminal.printError("Could not send add sink request. " + e.getMessage());
+			terminal.printError("Could not send remove sink request. " + e.getMessage());
 		}
 	}
-	
 	public void addTask() {
 		try {
 			final AddTaskRequest request = new AddTaskRequest();
@@ -141,6 +142,29 @@ public class ConsoleOutputRunner implements Runnable {
 			terminal.printError("Could not send add sink request. " + e.getMessage());
 		}
 	}
+	
+	public void removeDevice() {
+		try {
+			final byte[] data = fory.serialize(RemoveDeviceRequest.INSTANCE);
+			dos.writeInt(data.length);
+			dos.write(data);
+			terminal.switchReader();
+		} catch (final IOException e) {
+			terminal.printError("Could not send remove device request. " + e.getMessage());
+		}
+	}
+	
+	public void saveDevice() {
+		try {
+			final byte[] data = fory.serialize(SaveDeviceRequest.INSTANCE);
+			dos.writeInt(data.length);
+			dos.write(data);
+			terminal.switchReader();
+		} catch (final IOException e) {
+			terminal.printError("Could not send save device request. " + e.getMessage());
+		}
+	}
+	
 
 	public void setDeviceId(int id) {
 		try {
@@ -251,27 +275,7 @@ public class ConsoleOutputRunner implements Runnable {
 							msg.toConsoleOutput(terminal, logConfig);
 						}
 					} else if (object instanceof DeviceListResponse devListResponse) {
-						final List<DeviceData> devices = new ArrayList<>(devListResponse.getDeviceList());
-						devices.sort(new DeviceDataComparator());
-						final AttributedStringBuilder deviceTable = new AttributedStringBuilder();
-						deviceTable.style(AttributedStyle.DEFAULT.foreground(AttributedStyle.WHITE));
-						deviceTable.append(StringUtils.center("Device", 10)).append('|').append(StringUtils.center("Description", 40)).append('|').append(StringUtils.center("Status", 15)).append('\n');
-						deviceTable.append(StringUtils.repeat('-', 66)).append('\n');
-						for (final DeviceData device : devices) {
-							final String description = device.getDescription();
-							if (device.isConnected()) {
-								deviceTable.style(AttributedStyle.DEFAULT.foreground(AttributedStyle.GREEN));
-								deviceTable.append(StringUtils.rightPad("Device " + device.getId(), 10)).append('|');
-								deviceTable.append(StringUtils.rightPad(description != null ? description : " ", 40)).append('|');
-								deviceTable.append(StringUtils.center("connected", 15)).append('\n');
-							} else {
-								deviceTable.style(AttributedStyle.DEFAULT.foreground(AttributedStyle.YELLOW));
-								deviceTable.append(StringUtils.rightPad("Device " + device.getId(), 10)).append('|');
-								deviceTable.append(StringUtils.rightPad(description != null ? description : " ", 40)).append('|');
-								deviceTable.append(StringUtils.center("disconnected", 15)).append('\n');;
-							}
-						}
-						terminal.printAbove(deviceTable);
+						handleDeviceListResponse(devListResponse);
 					} else if (object instanceof ConsoleRequest consoleRequest) {
 						final String response = terminal.readLine(consoleRequest.getRequest() + '>');
 						final ConsoleResponse consoleResponse = new ConsoleResponse();
@@ -281,7 +285,6 @@ public class ConsoleOutputRunner implements Runnable {
 						dos.write(outData);
 					} else if (object instanceof SwitchToNonInteractiveRequest) {
 						terminal.setInteractive(false);
-						terminal.switchReader();
 					} else {
 						terminal.printError("Unhandled object " + object.getClass().getName());
 					}
@@ -296,6 +299,36 @@ public class ConsoleOutputRunner implements Runnable {
 		}
 		terminal.printWarning("Output runner stopped");
 		terminal.setInteractive(false);
+	}
+	
+	private void handleDeviceListResponse(final DeviceListResponse devListResponse) {
+		final List<DeviceData> devices = new ArrayList<>(devListResponse.getDeviceList());
+		devices.sort(new DeviceDataComparator());
+		final AttributedStringBuilder deviceTable = new AttributedStringBuilder();
+		deviceTable.style(AttributedStyle.DEFAULT.foreground(AttributedStyle.WHITE));
+		deviceTable
+			.append(StringUtils.center("Device", 10)).append('|')
+			.append(StringUtils.center("Description", 40)).append('|')
+			.append(StringUtils.center("BuildId", 20)).append('|')
+			.append(StringUtils.center("Status", 15)).append('\n');
+		deviceTable.append(StringUtils.repeat('-', 87)).append('\n');
+		for (final DeviceData device : devices) {
+			final String description = device.getDescription();
+			final String buildId = device.getBuildId();
+			if (device.isConnected()) {
+				deviceTable.style(AttributedStyle.DEFAULT.foreground(AttributedStyle.GREEN));
+				deviceTable.append(StringUtils.rightPad("Device " + device.getId(), 10)).append('|');
+				deviceTable.append(StringUtils.rightPad(description != null ? description : " ", 40)).append('|');
+				deviceTable.append(StringUtils.rightPad(buildId != null ? buildId : " ", 20)).append('|');
+				deviceTable.append(StringUtils.center("connected", 15)).append('\n');
+			} else {
+				deviceTable.style(AttributedStyle.DEFAULT.foreground(AttributedStyle.YELLOW));
+				deviceTable.append(StringUtils.rightPad("Device " + device.getId(), 10)).append('|');
+				deviceTable.append(StringUtils.rightPad(buildId != null ? buildId : " ", 20)).append('|');
+				deviceTable.append(StringUtils.center("disconnected", 15)).append('\n');
+			}
+		}
+		terminal.printAbove(deviceTable);
 	}
 	
 	static class DeviceDataComparator implements Comparator<DeviceData> {

@@ -275,6 +275,9 @@ public class MechRainCLI implements Callable<Integer> {
 				return;
 			} 
 			break;
+		case "exit":
+			terminal.switchReader();
+			break;
 		case "remove":
 			if (splits.length != 2) {
 				terminal.printError("expected 2 arguments but got " + splits.length);
@@ -308,7 +311,7 @@ public class MechRainCLI implements Callable<Integer> {
 				}
 				break;
 			case "device":
-				outputRunner.addTask();
+				outputRunner.removeDevice();
 				break;
 			default:
 				terminal.printError("Expected 'on' or 'off' but got " + splits[2]);
@@ -317,6 +320,9 @@ public class MechRainCLI implements Callable<Integer> {
 			break;
 		case "reset":
 			outputRunner.resetDevice();
+			break;
+		case "save":
+			outputRunner.saveDevice();
 			break;
 		case "set":
 			if (splits.length != 3) {
@@ -340,8 +346,6 @@ public class MechRainCLI implements Callable<Integer> {
 				terminal.printError("Expected 'on' or 'off' but got " + splits[2]);
 				return;
 			}
-			break;
-		case "save":
 			break;
 		default:
 			terminal.printError("Unkown option " + splits[0]);
