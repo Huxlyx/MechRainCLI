@@ -31,6 +31,7 @@ import de.mechrain.cmdline.beans.DeviceListRequest;
 import de.mechrain.cmdline.beans.DeviceListResponse;
 import de.mechrain.cmdline.beans.DeviceListResponse.DeviceData;
 import de.mechrain.cmdline.beans.DeviceResetRequest;
+import de.mechrain.cmdline.beans.EndConfigureDeviceRequest;
 import de.mechrain.cmdline.beans.RemoveDeviceRequest;
 import de.mechrain.cmdline.beans.RemoveSinkRequest;
 import de.mechrain.cmdline.beans.RemoveTaskRequest;
@@ -94,6 +95,18 @@ public class ConsoleOutputRunner implements Runnable {
 			terminal.printError("Invalid device id " + id + " expected a number. " + e.getMessage());
 		} catch (final IOException e) {
 			terminal.printError("Could not send config device request. " + e.getMessage());
+		}
+	}
+	
+	public void endConfigDevice() {
+		try {
+			final EndConfigureDeviceRequest request = new EndConfigureDeviceRequest();
+			final byte[] data = fory.serialize(request);
+			dos.writeInt(data.length);
+			dos.write(data);
+			terminal.switchReader();
+		} catch (final IOException e) {
+			terminal.printError("Could not send end config device request. " + e.getMessage());
 		}
 	}
 	
