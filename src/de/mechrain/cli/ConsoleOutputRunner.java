@@ -324,6 +324,7 @@ public class ConsoleOutputRunner implements Runnable {
 			} else {
 				deviceTable.style(AttributedStyle.DEFAULT.foreground(AttributedStyle.YELLOW));
 				deviceTable.append(StringUtils.rightPad("Device " + device.getId(), 10)).append('|');
+				deviceTable.append(StringUtils.rightPad(description != null ? description : " ", 40)).append('|');
 				deviceTable.append(StringUtils.rightPad(buildId != null ? buildId : " ", 20)).append('|');
 				deviceTable.append(StringUtils.center("disconnected", 15)).append('\n');
 			}
