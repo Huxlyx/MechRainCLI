@@ -24,7 +24,7 @@ import org.jline.utils.AttributedStyle;
 import de.mechrain.cmdline.MechRainFory;
 import de.mechrain.cmdline.beans.AddSinkRequest;
 import de.mechrain.cmdline.beans.AddTaskRequest;
-import de.mechrain.cmdline.beans.ConfigDeviceRequest;
+import de.mechrain.cmdline.beans.DeviceConfigRequest;
 import de.mechrain.cmdline.beans.ConsoleRequest;
 import de.mechrain.cmdline.beans.ConsoleResponse;
 import de.mechrain.cmdline.beans.DeviceListRequest;
@@ -85,12 +85,12 @@ public class ConsoleOutputRunner implements Runnable {
 	public void configDevice(final String id) {
 		try {
 			final int deviceId = Integer.parseInt(id);
-			final ConfigDeviceRequest request = new ConfigDeviceRequest();
+			final DeviceConfigRequest request = new DeviceConfigRequest();
 			request.setDeviceId(deviceId);
 			final byte[] data = fory.serialize(request);
+			terminal.switchReader();
 			dos.writeInt(data.length);
 			dos.write(data);
-			terminal.switchReader();
 		} catch (final NumberFormatException e) {
 			terminal.printError("Invalid device id " + id + " expected a number. " + e.getMessage());
 		} catch (final IOException e) {
