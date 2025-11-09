@@ -321,9 +321,6 @@ public class MechRainCLI implements Callable<Integer> {
 		case "reset":
 			outputRunner.resetDevice();
 			break;
-		case "save":
-			outputRunner.saveDevice();
-			break;
 		case "set":
 			if (splits.length != 3) {
 				terminal.printError("expected 3 arguments but got " + splits.length);

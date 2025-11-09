@@ -34,7 +34,6 @@ import de.mechrain.cmdline.beans.DeviceResetRequest;
 import de.mechrain.cmdline.beans.RemoveDeviceRequest;
 import de.mechrain.cmdline.beans.RemoveSinkRequest;
 import de.mechrain.cmdline.beans.RemoveTaskRequest;
-import de.mechrain.cmdline.beans.SaveDeviceRequest;
 import de.mechrain.cmdline.beans.SetDescriptionRequest;
 import de.mechrain.cmdline.beans.SetIdRequest;
 import de.mechrain.cmdline.beans.SwitchToNonInteractiveRequest;
@@ -153,19 +152,12 @@ public class ConsoleOutputRunner implements Runnable {
 			terminal.printError("Could not send remove device request. " + e.getMessage());
 		}
 	}
-	
-	public void saveDevice() {
-		try {
-			final byte[] data = fory.serialize(SaveDeviceRequest.INSTANCE);
-			dos.writeInt(data.length);
-			dos.write(data);
-			terminal.switchReader();
-		} catch (final IOException e) {
-			terminal.printError("Could not send save device request. " + e.getMessage());
-		}
-	}
-	
 
+	/**
+	 * Sends a set device id request for the connected device.
+	 * 
+	 * @param id the new device id
+	 */
 	public void setDeviceId(int id) {
 		try {
 			final SetIdRequest request = new SetIdRequest(id);
@@ -177,6 +169,11 @@ public class ConsoleOutputRunner implements Runnable {
 		}
 	}
 	
+	/**
+	 * Sends a set device description request for the connected device.
+	 * 
+	 * @param description the new device description
+	 */
 	public void setDeviceDescription(final String description) {
 		try {
 			final SetDescriptionRequest request = new SetDescriptionRequest(description);
@@ -188,6 +185,9 @@ public class ConsoleOutputRunner implements Runnable {
 		}
 	}
 	
+	/**
+	 * Sends a device reset request to the connected device.
+	 */
 	public void resetDevice() {
 		try {
 			final DeviceResetRequest request = new DeviceResetRequest();
@@ -203,6 +203,12 @@ public class ConsoleOutputRunner implements Runnable {
 		logMessages.clear();
 	}
 	
+	/**
+	 * Determines whether a log message should be output based on the current filter settings.
+	 * 
+	 * @param msg the log message to evaluate
+	 * @return true if the message should be output, false otherwise
+	 */
 	private boolean shouldOutput(final LogMessage msg) {
 		if (msg.getLevel().intLevel() > logConfig.getFilterLevel().intLevel()) {
 			return false;
@@ -220,6 +226,9 @@ public class ConsoleOutputRunner implements Runnable {
 		}
 	}
 	
+	/**
+	 * Redraws the console output based on the current log buffer and filter settings.
+	 */
 	public void redraw() {
 		for (final Iterator<LogMessage> iterator = logMessages.iterator(); iterator.hasNext();) {
 			final LogMessage msg = iterator.next();
@@ -229,6 +238,11 @@ public class ConsoleOutputRunner implements Runnable {
 		}
 	}
 	
+	/**
+	 * Dumps the current log buffer to a file.
+	 * 
+	 * @param fileName the file name to dump the log to
+	 */
 	public void dumpToFile(final String fileName) {
 		final Path path = Paths.get(fileName);
 		
@@ -301,6 +315,11 @@ public class ConsoleOutputRunner implements Runnable {
 		terminal.setInteractive(false);
 	}
 	
+	/**
+	 * Handles the device list response by formatting and displaying the device information in a table.
+	 * 
+	 * @param devListResponse the device list response to handle
+	 */
 	private void handleDeviceListResponse(final DeviceListResponse devListResponse) {
 		final List<DeviceData> devices = new ArrayList<>(devListResponse.getDeviceList());
 		devices.sort(new DeviceDataComparator());
