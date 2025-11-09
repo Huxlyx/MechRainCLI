@@ -19,7 +19,9 @@ import java.net.SocketTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.Callable;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.spi.StandardLevel;
+import org.jline.reader.UserInterruptException;
 import org.jline.utils.AttributedStringBuilder;
 import org.jline.utils.AttributedStyle;
 
@@ -56,27 +58,41 @@ public class MechRainCLI implements Callable<Integer> {
 				terminal.printHeader();
 				terminal.printInfo("Connection established (took " + (System.currentTimeMillis() - start) + "ms) ");
 			}
-
-			final InputStream inputStream = socket.getInputStream();
-			final OutputStream outputStream = socket.getOutputStream();
-			final ConsoleOutputRunner outputRunner = new ConsoleOutputRunner(inputStream, outputStream, terminal, config);
-			final Thread cliThread = new Thread(outputRunner);
-			cliThread.start();
-
-			boolean running = true;
-			while (running) {
-				terminal.maybeWaitForNonInteractive();
-				final String line = terminal.readLine("MechRain> ");
-
-				final String[] splits = line.split(" ");
-
-				switch (terminal.getMode()) {
-				case GENERAL:
-					running = handleGeneral(splits, outputRunner, config, socket);
-					break;
-				case DEVICE:
-					handleDevice(splits, outputRunner);
-					break;
+			
+			try (final InputStream inputStream = socket.getInputStream();
+					final OutputStream outputStream = socket.getOutputStream()) {
+				final ConsoleOutputRunner outputRunner = new ConsoleOutputRunner(inputStream, outputStream, terminal, config);
+				final Thread cliThread = new Thread(outputRunner);
+				cliThread.start();
+				
+				boolean running = true;
+				while (running) {
+					terminal.maybeWaitForNonInteractive();
+					final String line;
+					try {
+						line = terminal.readLine("MechRain> ");
+					} catch (final UserInterruptException e) {
+						if (terminal.getMode() == MechRainTerminal.Mode.DEVICE) {
+							terminal.printInfo("Switched to general mode");
+							outputRunner.endConfigDevice();
+						} else {
+							terminal.printInfo("Exiting CLI");
+							running = false;
+							reconnect = false;
+						}
+						continue;
+					}
+					
+					final String[] splits = line.split(" ");
+					
+					switch (terminal.getMode()) {
+					case GENERAL:
+						running = handleGeneral(splits, outputRunner, config, socket);
+						break;
+					case DEVICE:
+						handleDevice(splits, outputRunner);
+						break;
+					}
 				}
 			}
 		}
@@ -276,7 +292,7 @@ public class MechRainCLI implements Callable<Integer> {
 			} 
 			break;
 		case "exit":
-			terminal.switchReader();
+			outputRunner.endConfigDevice();
 			break;
 		case "remove":
 			if (splits.length != 2) {
@@ -322,7 +338,7 @@ public class MechRainCLI implements Callable<Integer> {
 			outputRunner.resetDevice();
 			break;
 		case "set":
-			if (splits.length != 3) {
+			if (splits.length < 3) {
 				terminal.printError("expected 3 arguments but got " + splits.length);
 				return;
 			}
@@ -336,7 +352,7 @@ public class MechRainCLI implements Callable<Integer> {
 				}
 				break;
 			case "description":
-				final String description = splits[2];
+				final String description = StringUtils.join(splits, ' ', 2, splits.length);
 				outputRunner.setDeviceDescription(description);
 				break;
 			default:
