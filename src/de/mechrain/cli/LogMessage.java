@@ -7,7 +7,7 @@ import java.util.Date;
 
 import org.apache.logging.log4j.spi.StandardLevel;
 
-import de.mechrain.log.LogEvent;
+import de.mechrain.cmdline.beans.LogEvent;
 
 public class LogMessage {
 

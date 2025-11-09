@@ -13,6 +13,7 @@ import java.util.Comparator;
 import java.util.Deque;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentLinkedDeque;
 
 import org.apache.commons.lang3.StringUtils;
@@ -25,6 +26,7 @@ import de.mechrain.cmdline.MechRainFory;
 import de.mechrain.cmdline.beans.AddSinkRequest;
 import de.mechrain.cmdline.beans.AddTaskRequest;
 import de.mechrain.cmdline.beans.DeviceConfigRequest;
+import de.mechrain.cmdline.beans.DeviceConfigResponse;
 import de.mechrain.cmdline.beans.ConsoleRequest;
 import de.mechrain.cmdline.beans.ConsoleResponse;
 import de.mechrain.cmdline.beans.DeviceListRequest;
@@ -32,13 +34,13 @@ import de.mechrain.cmdline.beans.DeviceListResponse;
 import de.mechrain.cmdline.beans.DeviceListResponse.DeviceData;
 import de.mechrain.cmdline.beans.DeviceResetRequest;
 import de.mechrain.cmdline.beans.EndConfigureDeviceRequest;
+import de.mechrain.cmdline.beans.LogEvent;
 import de.mechrain.cmdline.beans.RemoveDeviceRequest;
 import de.mechrain.cmdline.beans.RemoveSinkRequest;
 import de.mechrain.cmdline.beans.RemoveTaskRequest;
 import de.mechrain.cmdline.beans.SetDescriptionRequest;
 import de.mechrain.cmdline.beans.SetIdRequest;
 import de.mechrain.cmdline.beans.SwitchToNonInteractiveRequest;
-import de.mechrain.log.LogEvent;
 
 public class ConsoleOutputRunner implements Runnable {
 	
@@ -104,9 +106,10 @@ public class ConsoleOutputRunner implements Runnable {
 			final byte[] data = fory.serialize(request);
 			dos.writeInt(data.length);
 			dos.write(data);
-			terminal.switchReader();
 		} catch (final IOException e) {
 			terminal.printError("Could not send end config device request. " + e.getMessage());
+		} finally {
+			terminal.switchReader();
 		}
 	}
 	
@@ -303,6 +306,8 @@ public class ConsoleOutputRunner implements Runnable {
 						}
 					} else if (object instanceof DeviceListResponse devListResponse) {
 						handleDeviceListResponse(devListResponse);
+					} else if (object instanceof DeviceConfigResponse deviceConfigResponse) {
+						handleDeviceConfigResponse(deviceConfigResponse);
 					} else if (object instanceof ConsoleRequest consoleRequest) {
 						final String response = terminal.readLine(consoleRequest.getRequest() + '>');
 						final ConsoleResponse consoleResponse = new ConsoleResponse();
@@ -362,6 +367,26 @@ public class ConsoleOutputRunner implements Runnable {
 			}
 		}
 		terminal.printAbove(deviceTable);
+	}
+	
+	/**
+	 * Handles the device configuration response by displaying the configuration details.
+	 * 
+	 * @param deviceConfigResponse the device configuration response to handle
+	 */
+	private void handleDeviceConfigResponse(final DeviceConfigResponse deviceConfigResponse) {
+		final AttributedStringBuilder deviceConfig = new AttributedStringBuilder();
+		deviceConfig.style(AttributedStyle.DEFAULT.foreground(AttributedStyle.GREEN));
+		deviceConfig.append("Device ").append(String.valueOf(deviceConfigResponse.deviceData.getId())).append(" Configuration:\n");
+		for (Entry<Integer, String> entry : deviceConfigResponse.deviceData.getTasks().entrySet()) {
+			deviceConfig.append("  Task ").append(String.valueOf(entry.getKey())).append("): ").append(entry.getValue()).append('\n');
+		}
+		deviceConfig.style(AttributedStyle.DEFAULT.foreground(AttributedStyle.YELLOW));
+		deviceConfig.append("Sinks:").append('\n');
+		for (final Entry<Integer, String> entry : deviceConfigResponse.deviceData.getSinks().entrySet()) {
+			deviceConfig.append("  Sink ").append(String.valueOf(entry.getKey())).append("): ").append(entry.getValue()).append('\n');
+		}
+		terminal.printAbove(deviceConfig);
 	}
 	
 	static class DeviceDataComparator implements Comparator<DeviceData> {

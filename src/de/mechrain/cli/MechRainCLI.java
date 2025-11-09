@@ -287,7 +287,7 @@ public class MechRainCLI implements Callable<Integer> {
 				outputRunner.addTask();
 				break;
 			default:
-				terminal.printError("Expected 'on' or 'off' but got " + splits[2]);
+				terminal.printError("Unkown add option '" + splits[1] + "'");
 				return;
 			} 
 			break;
@@ -295,34 +295,26 @@ public class MechRainCLI implements Callable<Integer> {
 			outputRunner.endConfigDevice();
 			break;
 		case "remove":
-			if (splits.length != 2) {
-				terminal.printError("expected 2 arguments but got " + splits.length);
+			if (splits.length != 3) {
+				terminal.printError("expected 3 arguments but got " + splits.length);
 				return;
 			}
 			switch (splits[1].toLowerCase()) {
 			case "sink":
-				if (splits.length != 3) {
-					terminal.printError("expected 4 arguments but got " + splits.length);
-					return;
-				}
 				try {
-					final int id = Integer.parseInt(splits[3]);
+					final int id = Integer.parseInt(splits[2]);
 					outputRunner.removeSink(id);
 				} catch (final NumberFormatException e) {
-					terminal.printError("Not a valid id:" + splits[3]);
+					terminal.printError("Not a valid id:" + splits[2]);
 					return;
 				}
 				break;
 			case "task":
-				if (splits.length != 3) {
-					terminal.printError("expected 4 arguments but got " + splits.length);
-					return;
-				}
 				try {
-					final int id = Integer.parseInt(splits[3]);
+					final int id = Integer.parseInt(splits[2]);
 					outputRunner.removeTask(id);
 				} catch (final NumberFormatException e) {
-					terminal.printError("Not a valid id:" + splits[3]);
+					terminal.printError("Not a valid id:" + splits[2]);
 					return;
 				}
 				break;
@@ -330,7 +322,7 @@ public class MechRainCLI implements Callable<Integer> {
 				outputRunner.removeDevice();
 				break;
 			default:
-				terminal.printError("Expected 'on' or 'off' but got " + splits[2]);
+				terminal.printError("Unkown remove option '" + splits[1] + "'");
 				return;
 			} 
 			break;
@@ -356,7 +348,7 @@ public class MechRainCLI implements Callable<Integer> {
 				outputRunner.setDeviceDescription(description);
 				break;
 			default:
-				terminal.printError("Expected 'on' or 'off' but got " + splits[2]);
+				terminal.printError("Unkown set option '" + splits[1] + "'");
 				return;
 			}
 			break;
