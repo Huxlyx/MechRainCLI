@@ -17,7 +17,6 @@ import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentLinkedDeque;
 
 import org.apache.commons.lang3.StringUtils;
-import org.apache.fory.ThreadSafeFory;
 import org.apache.fory.exception.DeserializationException;
 import org.jline.utils.AttributedStringBuilder;
 import org.jline.utils.AttributedStyle;
@@ -51,8 +50,6 @@ public class ConsoleOutputRunner implements Runnable {
 	private final MechRainTerminal terminal;
 	private final LogConfig logConfig;
 
-	private final ThreadSafeFory fory;
-	
 	private final Deque<LogMessage> logMessages = new ConcurrentLinkedDeque<>();
 	
 	private boolean updateConsole = true;
@@ -62,7 +59,6 @@ public class ConsoleOutputRunner implements Runnable {
 		this.dos = new DataOutputStream(os);
 		this.terminal = terminal;
 		this.logConfig = logConfig;
-		this.fory = MechRainFory.INSTANCE;
 	}
 
 	public void setUpdateConsole(boolean updateConsole) {
@@ -76,9 +72,7 @@ public class ConsoleOutputRunner implements Runnable {
 	
 	public void showDevices() {
 		try {
-			final byte[] data = fory.serialize(DeviceListRequest.INSTANCE);
-			dos.writeInt(data.length);
-			dos.write(data);
+			MechRainFory.serializeAndSend(DeviceListRequest.INSTANCE, dos);
 		} catch (final IOException e) {
 			terminal.printError("Could not send device list request. " + e.getMessage());
 		}
@@ -89,10 +83,8 @@ public class ConsoleOutputRunner implements Runnable {
 			final int deviceId = Integer.parseInt(id);
 			final DeviceConfigRequest request = new DeviceConfigRequest();
 			request.setDeviceId(deviceId);
-			final byte[] data = fory.serialize(request);
+			MechRainFory.serializeAndSend(request, dos);
 			terminal.switchReader();
-			dos.writeInt(data.length);
-			dos.write(data);
 		} catch (final NumberFormatException e) {
 			terminal.printError("Invalid device id " + id + " expected a number. " + e.getMessage());
 		} catch (final IOException e) {
@@ -103,9 +95,7 @@ public class ConsoleOutputRunner implements Runnable {
 	public void endConfigDevice() {
 		try {
 			final EndConfigureDeviceRequest request = new EndConfigureDeviceRequest();
-			final byte[] data = fory.serialize(request);
-			dos.writeInt(data.length);
-			dos.write(data);
+			MechRainFory.serializeAndSend(request, dos);
 		} catch (final IOException e) {
 			terminal.printError("Could not send end config device request. " + e.getMessage());
 		} finally {
@@ -116,9 +106,7 @@ public class ConsoleOutputRunner implements Runnable {
 	public void addSink() {
 		try {
 			final AddSinkRequest request = new AddSinkRequest();
-			final byte[] data = fory.serialize(request);
-			dos.writeInt(data.length);
-			dos.write(data);
+			MechRainFory.serializeAndSend(request, dos);
 			terminal.setInteractive(true);
 		} catch (final IOException e) {
 			terminal.printError("Could not send add sink request. " + e.getMessage());
@@ -128,19 +116,15 @@ public class ConsoleOutputRunner implements Runnable {
 	public void removeSink(final int id) {
 		try {
 			final RemoveSinkRequest request = new RemoveSinkRequest(id);
-			final byte[] data = fory.serialize(request);
-			dos.writeInt(data.length);
-			dos.write(data);
+			MechRainFory.serializeAndSend(request, dos);
 		} catch (final IOException e) {
 			terminal.printError("Could not send remove sink request. " + e.getMessage());
 		}
 	}
 	public void addTask() {
 		try {
-			final AddTaskRequest request = new AddTaskRequest();
-			final byte[] data = fory.serialize(request);
-			dos.writeInt(data.length);
-			dos.write(data);
+			final AddTaskRequest request = AddTaskRequest.INSTANCE;
+			MechRainFory.serializeAndSend(request, dos);
 			terminal.setInteractive(true);
 		} catch (final IOException e) {
 			terminal.printError("Could not send add task request. " + e.getMessage());
@@ -150,9 +134,7 @@ public class ConsoleOutputRunner implements Runnable {
 	public void removeTask(final int id) {
 		try {
 			final RemoveTaskRequest request = new RemoveTaskRequest(id);
-			final byte[] data = fory.serialize(request);
-			dos.writeInt(data.length);
-			dos.write(data);
+			MechRainFory.serializeAndSend(request, dos);
 		} catch (final IOException e) {
 			terminal.printError("Could not send add sink request. " + e.getMessage());
 		}
@@ -160,9 +142,7 @@ public class ConsoleOutputRunner implements Runnable {
 	
 	public void removeDevice() {
 		try {
-			final byte[] data = fory.serialize(RemoveDeviceRequest.INSTANCE);
-			dos.writeInt(data.length);
-			dos.write(data);
+			MechRainFory.serializeAndSend(RemoveDeviceRequest.INSTANCE, dos);
 			terminal.switchReader();
 		} catch (final IOException e) {
 			terminal.printError("Could not send remove device request. " + e.getMessage());
@@ -177,9 +157,7 @@ public class ConsoleOutputRunner implements Runnable {
 	public void setDeviceId(int id) {
 		try {
 			final SetIdRequest request = new SetIdRequest(id);
-			final byte[] data = fory.serialize(request);
-			dos.writeInt(data.length);
-			dos.write(data);
+			MechRainFory.serializeAndSend(request, dos);
 		} catch (final IOException e) {
 			terminal.printError("Could not send set task request. " + e.getMessage());
 		}
@@ -193,9 +171,7 @@ public class ConsoleOutputRunner implements Runnable {
 	public void setDeviceDescription(final String description) {
 		try {
 			final SetDescriptionRequest request = new SetDescriptionRequest(description);
-			final byte[] data = fory.serialize(request);
-			dos.writeInt(data.length);
-			dos.write(data);
+			MechRainFory.serializeAndSend(request, dos);
 		} catch (final IOException e) {
 			terminal.printError("Could not send set task request. " + e.getMessage());
 		}
@@ -207,9 +183,7 @@ public class ConsoleOutputRunner implements Runnable {
 	public void resetDevice() {
 		try {
 			final DeviceResetRequest request = new DeviceResetRequest();
-			final byte[] data = fory.serialize(request);
-			dos.writeInt(data.length);
-			dos.write(data);
+			MechRainFory.serializeAndSend(request, dos);
 		} catch (final IOException e) {
 			terminal.printError("Could not reset device. " + e.getMessage());
 		}
@@ -294,7 +268,7 @@ public class ConsoleOutputRunner implements Runnable {
 					final int len = dis.readInt();
 					final byte[] data = new byte[len];
 					dis.readFully(data);
-					final Object object = fory.deserialize(data);
+					final Object object = MechRainFory.deserialize(data);
 					if (object instanceof LogEvent event) {
 						final LogMessage msg = new LogMessage(event);
 						if (logMessages.size() > MAX_MESSAGES) {
@@ -312,9 +286,7 @@ public class ConsoleOutputRunner implements Runnable {
 						final String response = terminal.readLine(consoleRequest.getRequest() + '>');
 						final ConsoleResponse consoleResponse = new ConsoleResponse();
 						consoleResponse.setResponse(response);
-						final byte[] outData = fory.serialize(consoleResponse);
-						dos.writeInt(outData.length);
-						dos.write(outData);
+						MechRainFory.serializeAndSend(consoleRequest, dos);
 					} else if (object instanceof SwitchToNonInteractiveRequest) {
 						terminal.setInteractive(false);
 					} else {
