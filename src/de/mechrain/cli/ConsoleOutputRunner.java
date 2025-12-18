@@ -286,7 +286,7 @@ public class ConsoleOutputRunner implements Runnable {
 						final String response = terminal.readLine(consoleRequest.getRequest() + '>');
 						final ConsoleResponse consoleResponse = new ConsoleResponse();
 						consoleResponse.setResponse(response);
-						MechRainFory.serializeAndSend(consoleRequest, dos);
+						MechRainFory.serializeAndSend(consoleResponse, dos);
 					} else if (object instanceof SwitchToNonInteractiveRequest) {
 						terminal.setInteractive(false);
 					} else {
@@ -350,14 +350,18 @@ public class ConsoleOutputRunner implements Runnable {
 		final AttributedStringBuilder deviceConfig = new AttributedStringBuilder();
 		deviceConfig.style(AttributedStyle.DEFAULT.foreground(AttributedStyle.GREEN));
 		deviceConfig.append("Device ").append(String.valueOf(deviceConfigResponse.deviceData.getId())).append(" Configuration:\n");
+		deviceConfig.append("Tasks:").append('\n');
 		for (Entry<Integer, String> entry : deviceConfigResponse.deviceData.getTasks().entrySet()) {
 			deviceConfig.append("  Task ").append(String.valueOf(entry.getKey())).append("): ").append(entry.getValue()).append('\n');
 		}
+		deviceConfig.append('\n');
 		deviceConfig.style(AttributedStyle.DEFAULT.foreground(AttributedStyle.YELLOW));
 		deviceConfig.append("Sinks:").append('\n');
 		for (final Entry<Integer, String> entry : deviceConfigResponse.deviceData.getSinks().entrySet()) {
 			deviceConfig.append("  Sink ").append(String.valueOf(entry.getKey())).append("): ").append(entry.getValue()).append('\n');
 		}
+		deviceConfig.append('\n');
+		
 		terminal.printAbove(deviceConfig);
 	}
 	
