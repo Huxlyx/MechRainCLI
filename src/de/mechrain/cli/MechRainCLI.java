@@ -30,7 +30,7 @@ import de.mechrain.cli.LogConfig.FilterBy;
 public class MechRainCLI implements Callable<Integer> {
 
 	int port = 5000;
-	boolean reconnect;
+	boolean reconnect = true;
 
 	static long start;
 
@@ -347,11 +347,44 @@ public class MechRainCLI implements Callable<Integer> {
 				final String description = StringUtils.join(splits, ' ', 2, splits.length);
 				outputRunner.setDeviceDescription(description);
 				break;
+			case "pixels":
+				try {
+					final int numPixels = Integer.parseInt(splits[2]);
+					outputRunner.setDeviceNumPixels(numPixels);
+				} catch (final NumberFormatException e) {
+					terminal.printError("Not a valid number of pixels:" + splits[2]);
+				}
+				break;
 			default:
 				terminal.printError("Unkown set option '" + splits[1] + "'");
 				return;
 			}
 			break;
+		case "rgb":
+			if (splits.length != 2 && splits.length != 4) {
+				terminal.printError("expected 2 or 4 arguments but got " + splits.length);
+				return;
+			}
+			if (splits.length == 2) {
+				try {
+					final int mode = Integer.parseInt(splits[1]);
+					outputRunner.setDeviceLedMode(mode);
+				} catch (final NumberFormatException e) {
+					terminal.printError("Not a valid LED mode:" + splits[1]);
+				}
+				break;
+			} else {
+				try {
+					final int r = Integer.parseInt(splits[1]);
+					final int g = Integer.parseInt(splits[2]);
+					final int b = Integer.parseInt(splits[3]);
+					outputRunner.setDeviceLedRGB(r, g, b);
+				} catch (final NumberFormatException e) {
+					terminal.printError("Not a valid RGB value:" + splits[1] + ", " + splits[2] + ", " + splits[3]);
+				}
+			}
+			break;
+			
 		default:
 			terminal.printError("Unkown option " + splits[0]);
 			break;
@@ -391,11 +424,14 @@ public class MechRainCLI implements Callable<Integer> {
 			socket.setBroadcast(true);
 			socket.setSoTimeout(5_000);
 
-			terminal.write("Waiting for connection");
+			
+			final boolean connectToTest = System.getProperty("test") != null;
+			
+			terminal.write("Waiting for connection" + (connectToTest ? " to CLI test server" : ""));
 
 			while (true) {
 				try {
-					final byte[] payload = "CLI-HELLO".getBytes(StandardCharsets.UTF_8);
+					final byte[] payload = connectToTest ? "CLI-TEST".getBytes(StandardCharsets.UTF_8) : "CLI-HELLO".getBytes(StandardCharsets.UTF_8);
 					final DatagramPacket broadcast = new DatagramPacket(payload, payload.length, InetAddress.getByName("255.255.255.255"), udpPort);
 					socket.send(broadcast);
 
@@ -416,7 +452,7 @@ public class MechRainCLI implements Callable<Integer> {
 	}
 
 
-	public static void main(String[] args) throws Exception {
+	public static void main(final String[] args) throws Exception {
 		start = System.currentTimeMillis();
 		final MechRainTerminal terminal = new MechRainTerminal();
 		MechRainCLI cli = new MechRainCLI(terminal);

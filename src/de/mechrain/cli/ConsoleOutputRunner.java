@@ -39,6 +39,9 @@ import de.mechrain.cmdline.beans.RemoveSinkRequest;
 import de.mechrain.cmdline.beans.RemoveTaskRequest;
 import de.mechrain.cmdline.beans.SetDescriptionRequest;
 import de.mechrain.cmdline.beans.SetIdRequest;
+import de.mechrain.cmdline.beans.SetLedMode1Request;
+import de.mechrain.cmdline.beans.SetNumPixelsRequest;
+import de.mechrain.cmdline.beans.SetLedAllRgbRequest;
 import de.mechrain.cmdline.beans.SwitchToNonInteractiveRequest;
 
 public class ConsoleOutputRunner implements Runnable {
@@ -171,6 +174,33 @@ public class ConsoleOutputRunner implements Runnable {
 	public void setDeviceDescription(final String description) {
 		try {
 			final SetDescriptionRequest request = new SetDescriptionRequest(description);
+			MechRainFory.serializeAndSend(request, dos);
+		} catch (final IOException e) {
+			terminal.printError("Could not send set task request. " + e.getMessage());
+		}
+	}
+
+	public void setDeviceNumPixels(int numPixels) {
+		try {
+			final SetNumPixelsRequest request = new SetNumPixelsRequest(numPixels);
+			MechRainFory.serializeAndSend(request, dos);
+		} catch (final IOException e) {
+			terminal.printError("Could not send set task request. " + e.getMessage());
+		}
+	}
+
+	public void setDeviceLedRGB(final int r, final int g, final int b) {
+		try {
+			final SetLedAllRgbRequest request = new SetLedAllRgbRequest(r, g, b);
+			MechRainFory.serializeAndSend(request, dos);
+		} catch (final IOException e) {
+			terminal.printError("Could not send set task request. " + e.getMessage());
+		}
+	}
+
+	public void setDeviceLedMode(final int mode) {
+		try {
+			final SetLedMode1Request request = SetLedMode1Request.INSTANCE;
 			MechRainFory.serializeAndSend(request, dos);
 		} catch (final IOException e) {
 			terminal.printError("Could not send set task request. " + e.getMessage());

@@ -75,7 +75,9 @@ public class MechRainTerminal {
 					node("device")),
 			node("set",
 					node("id"),
-					node("description"))
+					node("description"),
+					node("pixels")),
+			node("rgb")
 		);
 	
 	private final Terminal terminal;
